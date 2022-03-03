@@ -33,3 +33,5 @@ Set-ExecutionPolicy -ExecutionPolicy  LocalMachine -Scope AllSigned
 
 #Coneccion de mongoDB
 mongodb+srv://salasFSDI:<password>@cluster0.ozo9j.mongodb.net/myFirstDatabase?retryWrites=true&w=majority
+
+#El comentario esta mal, no es este "FSDI 109 Class 1-2" es este FSDI 110 Class 1-2
