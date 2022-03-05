@@ -10,6 +10,7 @@ import json
 import random
 from flask_cors import CORS
 from config import db
+from bson import ObjectId
 
 #Servidor/app
 app = Flask("server")
@@ -101,35 +102,53 @@ def get_count():
 def get_total():
     total=0
     for i in catalog:
-        total += i["price"]
+        total+= i["price"] 
     res = f"${total}"
     return json.dumps(total)
 
-#con la funcion get(en Thunder Client) /api/catalog/<id> y buscar el producto desde el id 
+#con la funcion get(en Thunder Client) /api/catalog/<id> buscar el producto desde el id 
 @app.route("/api/product/<id>")
 def get_product(id):
-    for i in catalog:
-        if(id==i["id"]):
-            return json.dumps(i)    
-    return abort(404)
+
+    if not ObjectId.is_valid(id):
+        return abort(400,"id doesnt exist")
+
+    prod=db.products.find_one({"id": ObjectId(id) })
+
+    if not prod:
+        return abort(400,"Product doesnt exist")
+
+    prod["id"] = str(prod["_id"])
+    prod["_id"] = ""
+    return json.dumps(prod)
+    #for i in catalog:
+    #    if(id==i["id"]):
+    #        return json.dumps(i)    
+    #return abort(404)
 
 #con la funcion get(en Thunder Client) /api/catalog/most_expensive y mostrar el producto mas caro
+#
 @app.route("/api/product/most_expensive")
 def get_most_expensive():
+    cursor=db.products.find({})
     pivot = catalog[0]
     for i in catalog:
         if i["price"] > pivot["price"]  :
             pivot=i
+            
     return json.dumps(pivot)    
 
 #Mostrar los resultado guardados de la variable category del metodo Catalog
 @app.route("/api/categories")
 def get_categories():
+    cursor=db.products.find({})
     res=[]
-    for i in catalog:
+    for i in cursor:
         category=i["category"]
+
         if not category in res:
             res.append(category)
+
     return json.dumps(res)
 
 #crear una funcion que permita al cliente (reaccionar) recuperar todos los productos que pertenecen a la categoría específica
@@ -160,24 +179,55 @@ coupons=[
     }
 
 ]
-
+#Clase 3
 @app.route("/api/coupons")
 def get_coupons():
-    return json.dumps(coupons)
+    cursor=db.coupons.find({})
+    res=[]
+    for prod in cursor:
+        prod["id"] = str(prod["_id"])
+        prod["_id"] = ""
+        res.append(prod)
+    return json.dumps(res)
 
 @app.route("/api/coupons", methods=["POST"])
 def save_coupons():
     coupon =request.get_json()
-    coupon["id"]=random.randint(500,900)
-    coupons.append(coupon)
+    #validacion
+    db.coupons.insert_one(coupon)
+    
+    coupon["id"] = str(coupon["_id"])
+    coupon["_id"] = ""
+
     return json.dumps(coupon)
 
 @app.route("/api/coupons/<code>")
 def get_coupon_code(code):
-    for i in coupons:
-        if i["code"]==code:
-            return json.dumps(i)
-    return abort(404)
+    coupon=db.coupons.find_one({"code":code})
+    if not coupon:
+        return abort(400,"Coupons doesnt exit" + code)
+    coupon["id"] = str(coupon["_id"])
+    coupon["_id"] = ""
+    return json.dumps(coupon)
 
+@app.route("/api/orders", methods=["POST"])
+def get_save_order_products():
+
+    order=request.get_json()#para insertar datos desde Thunder
+    db.orders.insert_one(order)
+    order["id"] = str(order["_id"])
+    order["_id"] = ""
+    return json.dumps(order)
+#revisar esta cosa antes de enviarlo
+@app.route("/api/orders/<user_id>")
+def get_order_code(user_id):
+    cursor=db.orders.find_one({"user_id":int(user_id) })
+    res=[]
+    for order in cursor:
+        order["id"] = str(order["_id"])
+        order["_id"] = ""
+        res.append(order)
+    return json.dumps(res)
+            
 #Iniciar el servidor
 app.run(debug=True)
